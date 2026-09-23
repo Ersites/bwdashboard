@@ -12,7 +12,7 @@ pub struct Stats {
 impl Stats {
     pub fn get_skill(&self) -> u32 {
         let g = self.games_played as f32;
-        let w = self.games_played as f32;
+        let w = self.wins as f32;
 
         let p = (w + 0.25 * K) / (g + K);
         
