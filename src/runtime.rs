@@ -45,8 +45,9 @@ pub fn start(
                     Ok((stream, _)) = listener.accept(), if !client_connected => {
                         client_connected = true;
                         let event_tx = event_tx.clone();
+                        let ctx = ctx.clone();
                         tokio::spawn(
-                            handle_client(stream, client_tx.clone(), event_tx, ctx.clone())
+                            handle_client(stream, client_tx.clone(), event_tx, ctx)
                         );
                     }
                     Some(event) = client_rx.recv() => {
@@ -57,8 +58,9 @@ pub fn start(
                             ClientEvent::GetPlayerSkill(name) => {
                                 let request_client = request_client.clone();
                                 let event_tx = event_tx.clone();
+                                let ctx = ctx.clone();
                                 tokio::spawn(async {
-                                    if let Err(e) = fetch_stats(name, request_client, event_tx).await {
+                                    if let Err(e) = fetch_stats(name, request_client, event_tx, ctx).await {
                                         error!("fetch_stats failed: {e}");
                                     }
                                 } );
@@ -89,7 +91,7 @@ async fn handle_client(
                 break;
             }
 
-            parse_line(&line, &event_tx, &ctx);
+            parse_line(&line, &event_tx, ctx.clone());
         }
     }
 
@@ -97,7 +99,7 @@ async fn handle_client(
     client_tx.send(ClientEvent::Disconnected).await.unwrap();
 }
 
-fn parse_line(line: &str, event_tx: &crossbeam::channel::Sender<Event>, ctx: &egui::Context) {
+fn parse_line(line: &str, event_tx: &crossbeam::channel::Sender<Event>, ctx: egui::Context) {
     match serde_json::from_str::<Message>(line) {
         Ok(message) => {
             for event in parser::parse(message) {
@@ -124,6 +126,7 @@ async fn fetch_stats(
     name: String,
     client: reqwest::Client,
     event_tx: crossbeam::channel::Sender<Event>,
+    ctx: egui::Context,
 ) -> Result<(), FetchStatsError> {
     let url = format_url(&name);
     let response = client.get(url).send().await?.error_for_status()?;
@@ -131,6 +134,7 @@ async fn fetch_stats(
     let raw_stats: RawStats = serde_json::from_str(&body).map_err(|err| FetchStatsError::deserialize(err, body))?;
     let stats: Stats = raw_stats.into();
     event_tx.send(Event::set_player_skill(name, stats.get_skill())).unwrap();
+    ctx.request_repaint();
     Ok(())
 }
 
