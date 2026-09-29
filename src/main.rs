@@ -6,6 +6,6 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "bwdashboard",
         options,
-        Box::new(|cc| Ok(Box::new(MyApp::new(cc.egui_ctx.clone())))),
+        Box::new(|cc| Ok(Box::new(MyApp::new(cc)))),
     )
 }

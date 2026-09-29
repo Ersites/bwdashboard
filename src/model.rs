@@ -1,14 +1,16 @@
 use crate::event;
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct Model {
     pub connected: bool,
     pub game_number: u32,
+    pub name: String,
+    pub menu_shown: bool,
     pub teams: Vec<Team>,
 }
 
 impl Model {
-    pub fn new() -> Self {
+    pub fn new(name: String) -> Self {
         let mut teams = Vec::new();
         for _ in 0..4 {
             teams.push(Team::default());
@@ -17,6 +19,8 @@ impl Model {
         Self {
             connected: false,
             game_number: 0,
+            name,
+            menu_shown: false,
             teams,
         }
     }

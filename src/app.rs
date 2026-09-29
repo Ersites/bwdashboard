@@ -15,7 +15,7 @@ pub struct MyApp {
 }
 
 impl MyApp {
-    pub fn new(ctx: egui::Context) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let mut fonts = egui::FontDefinitions::default();
 
         fonts.font_data.insert(
@@ -40,16 +40,23 @@ impl MyApp {
             .or_default()
             .insert(0, "cascadia_code".to_owned());
 
+        let ctx = cc.egui_ctx.clone();
+
         ctx.set_fonts(fonts);
 
         let (ready_tx, ready_rx) = crossbeam::channel::bounded(1);
         let (tx, client_rx) = crossbeam::channel::unbounded();
 
-        runtime::start(ready_tx, tx, ctx.clone());
+        runtime::start(ready_tx, tx, ctx);
         let client_tx = ready_rx.recv().unwrap();
 
+        let persistent_state: PersistentState = cc
+            .storage
+            .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
+            .unwrap_or_default();
+
         MyApp {
-            model: Model::new(),
+            model: Model::new(persistent_state.name),
             client_rx,
             client_tx,
         }
@@ -86,6 +93,14 @@ impl MyApp {
 }
 
 impl eframe::App for MyApp {
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        let state = PersistentState {
+            name: self.model.name.clone(),
+        };
+
+        eframe::set_value(storage, eframe::APP_KEY, &state);
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, _: &mut eframe::Frame) {
         self.handle_events();
 
@@ -103,4 +118,10 @@ impl eframe::App for MyApp {
                 });
             });
     }
+}
+
+#[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+struct PersistentState {
+    pub name: String,
 }
